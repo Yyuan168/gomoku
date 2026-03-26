@@ -1,0 +1,11 @@
+{
+  "name": "gomoku-server",
+  "version": "1.0.0",
+  "main": "gomoku_server.js",
+  "scripts": {
+    "start": "node gomoku_server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
