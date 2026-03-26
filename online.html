@@ -407,7 +407,7 @@
 const GRID = 15;
 const CELL = 38;
 const PAD = 19;
-const SERVER_URL = 'wss://many-poems-sniff.loca.lt';
+const SERVER_URL = 'ws://' + window.location.host;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
