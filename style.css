@@ -1,0 +1,118 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #f5deb3;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+h1 {
+  font-size: 2rem;
+  color: #4a2c0a;
+  letter-spacing: 4px;
+}
+
+.info-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: #4a2c0a;
+  font-weight: bold;
+}
+
+.piece {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.black-piece {
+  background: radial-gradient(circle at 35% 35%, #666, #000);
+}
+
+.white-piece {
+  background: radial-gradient(circle at 35% 35%, #fff, #bbb);
+  border: 1px solid #aaa;
+}
+
+#restart-btn,
+#play-again-btn {
+  padding: 8px 20px;
+  font-size: 0.95rem;
+  background: #8b4513;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#restart-btn:hover,
+#play-again-btn:hover {
+  background: #a0522d;
+}
+
+#board {
+  border: 3px solid #8b4513;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #deb887;
+  display: block;
+}
+
+/* Result overlay */
+#result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+#result-overlay.hidden {
+  display: none;
+}
+
+.result-box {
+  background: #fff8e7;
+  border: 3px solid #8b4513;
+  border-radius: 12px;
+  padding: 40px 60px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+#result-text {
+  font-size: 1.8rem;
+  color: #4a2c0a;
+  font-weight: bold;
+}

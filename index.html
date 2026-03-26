@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>五子棋</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>五子棋</h1>
+    <div class="info-bar">
+      <div class="player-info" id="player-info">
+        <span class="piece black-piece"></span>
+        <span id="current-player-text">黑棋先行</span>
+      </div>
+      <button id="restart-btn">重新开始</button>
+    </div>
+    <canvas id="board" width="600" height="600"></canvas>
+    <div id="result-overlay" class="hidden">
+      <div class="result-box">
+        <p id="result-text"></p>
+        <button id="play-again-btn">再来一局</button>
+      </div>
+    </div>
+  </div>
+  <script src="gomoku.js"></script>
+</body>
+</html>
