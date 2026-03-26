@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五子棋</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=ZCOOL+XiaoWei&display=swap');
+
+  :root {
+    --board-color: #d4a96a;
+    --board-dark: #b8864e;
+    --board-shadow: #8b5e2e;
+    --black-stone: #1a1a1a;
+    --white-stone: #f5f0e8;
+    --accent: #c0392b;
+    --bg: #1c1008;
+    --text-light: #f0e6d3;
+    --text-muted: #a08060;
+    --cell: 38px;
+    --stone: 34px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Serif SC', serif;
+    color: var(--text-light);
+    background-image:
+      radial-gradient(ellipse at 20% 20%, #3d1f0a 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, #2a1505 0%, transparent 50%);
+    padding: 20px;
+  }
+
+  h1 {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: 2.4rem;
+    letter-spacing: 0.3em;
+    color: var(--board-color);
+    text-shadow: 0 0 30px rgba(212,169,106,0.4);
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.2em;
+    margin-bottom: 20px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(212,169,106,0.2);
+    border-radius: 40px;
+    padding: 8px 24px;
+  }
+
+  .turn-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .stone-preview {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    transition: all 0.3s;
+  }
+
+  .stone-preview.black {
+    background: radial-gradient(circle at 35% 35%, #555, #111);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.15);
+  }
+
+  .stone-preview.white {
+    background: radial-gradient(circle at 35% 35%, #fff, #ccc);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.8);
+  }
+
+  .turn-text {
+    color: var(--text-light);
+    font-weight: 700;
+  }
+
+  .board-wrap {
+    position: relative;
+    padding: 24px;
+    background: var(--board-color);
+    border-radius: 4px;
+    box-shadow:
+      0 0 0 3px var(--board-dark),
+      0 0 0 6px var(--board-shadow),
+      0 20px 60px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent calc(var(--cell) - 1px),
+        rgba(139,94,46,0.3) calc(var(--cell) - 1px),
+        rgba(139,94,46,0.3) var(--cell)
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent calc(var(--cell) - 1px),
+        rgba(139,94,46,0.3) calc(var(--cell) - 1px),
+        rgba(139,94,46,0.3) var(--cell)
+      );
+  }
+
+  canvas {
+    display: block;
+    cursor: crosshair;
+    border-radius: 2px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  button {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    padding: 10px 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--board-color);
+    color: var(--bg);
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(212,169,106,0.3);
+  }
+
+  .btn-primary:hover {
+    background: #e8c07a;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(212,169,106,0.4);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid rgba(212,169,106,0.3);
+  }
+
+  .btn-secondary:hover {
+    color: var(--text-light);
+    border-color: rgba(212,169,106,0.6);
+  }
+
+  .win-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .win-overlay.show { display: flex; }
+
+  .win-card {
+    background: linear-gradient(135deg, #2a1a08, #1c1008);
+    border: 1px solid var(--board-color);
+    border-radius: 8px;
+    padding: 48px 64px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(212,169,106,0.3);
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .win-title {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: 3rem;
+    color: var(--board-color);
+    text-shadow: 0 0 30px rgba(212,169,106,0.6);
+    margin-bottom: 8px;
+  }
+
+  .win-sub {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 32px;
+    letter-spacing: 0.1em;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .mode-btn {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.8rem;
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(212,169,106,0.3);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .mode-btn.active {
+    background: var(--board-color);
+    color: var(--bg);
+    border-color: var(--board-color);
+    font-weight: 700;
+  }
+
+  .score-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+
+  .score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .score-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  .score-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--board-color);
+  }
+</style>
+</head>
+<body>
+
+<h1>五子棋</h1>
+<p class="subtitle">GOMOKU · 落子无悔</p>
+
+<div class="mode-selector">
+  <button class="mode-btn active" id="pvpBtn" onclick="setMode('pvp')">双人对战</button>
+  <button class="mode-btn" id="pvcBtn" onclick="setMode('pvc')">人机对战</button>
+</div>
+
+<div class="score-row">
+  <div class="score-item">
+    <span class="score-label">⚫ 黑方</span>
+    <span class="score-num" id="scoreBlack">0</span>
+  </div>
+  <div class="score-item">
+    <span class="score-label">平局</span>
+    <span class="score-num" id="scoreDraw">0</span>
+  </div>
+  <div class="score-item">
+    <span class="score-label">⚪ 白方</span>
+    <span class="score-num" id="scoreWhite">0</span>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="turn-indicator">
+    <div class="stone-preview black" id="stonePreview"></div>
+    <span id="turnText" class="turn-text">黑方落子</span>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <canvas id="board" width="570" height="570"></canvas>
+</div>
+
+<div class="controls">
+  <button class="btn-primary" onclick="resetGame()">新局</button>
+  <button class="btn-secondary" onclick="undoMove()">悔棋</button>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <div class="win-title" id="winTitle">黑方胜！</div>
+    <div class="win-sub" id="winSub">落子有声，胜负已分</div>
+    <button class="btn-primary" onclick="resetGame()">再来一局</button>
+  </div>
+</div>
+
+<script>
+const GRID = 15;
+const CELL = 38;
+const PAD = 19;
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+let board = [];
+let currentPlayer = 1; // 1=black, 2=white
+let gameOver = false;
+let history = [];
+let mode = 'pvp'; // pvp or pvc
+let scores = { black: 0, white: 0, draw: 0 };
+let winLine = null;
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('pvpBtn').classList.toggle('active', m === 'pvp');
+  document.getElementById('pvcBtn').classList.toggle('active', m === 'pvc');
+  resetGame();
+}
+
+function resetGame() {
+  board = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+  currentPlayer = 1;
+  gameOver = false;
+  history = [];
+  winLine = null;
+  document.getElementById('winOverlay').classList.remove('show');
+  updateStatus();
+  drawBoard();
+}
+
+function updateStatus() {
+  const preview = document.getElementById('stonePreview');
+  const text = document.getElementById('turnText');
+  if (gameOver) return;
+  if (currentPlayer === 1) {
+    preview.className = 'stone-preview black';
+    text.textContent = '黑方落子';
+  } else {
+    preview.className = 'stone-preview white';
+    text.textContent = mode === 'pvc' ? 'AI 思考中…' : '白方落子';
+  }
+}
+
+function drawBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(139,94,46,0.7)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < GRID; i++) {
+    const x = PAD + i * CELL;
+    const y = PAD + i * CELL;
+    ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, PAD + (GRID-1)*CELL); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(PAD + (GRID-1)*CELL, y); ctx.stroke();
+  }
+
+  // Star points
+  const stars = [[3,3],[3,11],[7,7],[11,3],[11,11]];
+  ctx.fillStyle = 'rgba(139,94,46,0.9)';
+  stars.forEach(([r,c]) => {
+    ctx.beginPath();
+    ctx.arc(PAD + c*CELL, PAD + r*CELL, 4, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Win line highlight
+  if (winLine) {
+    ctx.strokeStyle = 'rgba(192,57,43,0.7)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    const [r0,c0] = winLine[0];
+    const [r4,c4] = winLine[4];
+    ctx.beginPath();
+    ctx.moveTo(PAD + c0*CELL, PAD + r0*CELL);
+    ctx.lineTo(PAD + c4*CELL, PAD + r4*CELL);
+    ctx.stroke();
+  }
+
+  // Stones
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      if (board[r][c]) drawStone(r, c, board[r][c]);
+    }
+  }
+
+  // Last move marker
+  if (history.length > 0) {
+    const [lr, lc] = history[history.length - 1];
+    ctx.strokeStyle = board[lr][lc] === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.5;
+    const cx = PAD + lc*CELL, cy = PAD + lr*CELL;
+    const s = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx-s, cy); ctx.lineTo(cx+s, cy);
+    ctx.moveTo(cx, cy-s); ctx.lineTo(cx, cy+s);
+    ctx.stroke();
+  }
+}
+
+function drawStone(r, c, player) {
+  const x = PAD + c * CELL;
+  const y = PAD + r * CELL;
+  const radius = CELL * 0.44;
+
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 3;
+
+  const grad = ctx.createRadialGradient(x - radius*0.3, y - radius*0.3, radius*0.05, x, y, radius);
+  if (player === 1) {
+    grad.addColorStop(0, '#666');
+    grad.addColorStop(0.4, '#222');
+    grad.addColorStop(1, '#000');
+  } else {
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.5, '#e8e0d0');
+    grad.addColorStop(1, '#b0a898');
+  }
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Shine
+  const shine = ctx.createRadialGradient(x - radius*0.35, y - radius*0.35, 0, x - radius*0.2, y - radius*0.2, radius*0.6);
+  shine.addColorStop(0, player === 1 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)');
+  shine.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = shine;
+  ctx.fill();
+}
+
+function getCell(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+  const c = Math.round((mx - PAD) / CELL);
+  const r = Math.round((my - PAD) / CELL);
+  if (r >= 0 && r < GRID && c >= 0 && c < GRID) return [r, c];
+  return null;
+}
+
+canvas.addEventListener('click', e => {
+  if (gameOver) return;
+  if (mode === 'pvc' && currentPlayer === 2) return;
+  const cell = getCell(e);
+  if (!cell) return;
+  const [r, c] = cell;
+  if (board[r][c]) return;
+  placeStone(r, c);
+  if (!gameOver && mode === 'pvc' && currentPlayer === 2) {
+    updateStatus();
+    setTimeout(aiMove, 300);
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (gameOver) return;
+  if (mode === 'pvc' && currentPlayer === 2) return;
+  const cell = getCell(e);
+  drawBoard();
+  if (cell) {
+    const [r, c] = cell;
+    if (!board[r][c]) {
+      ctx.globalAlpha = 0.35;
+      drawStone(r, c, currentPlayer);
+      ctx.globalAlpha = 1;
+    }
+  }
+});
+
+canvas.addEventListener('mouseleave', () => drawBoard());
+
+function placeStone(r, c) {
+  board[r][c] = currentPlayer;
+  history.push([r, c]);
+  const win = checkWin(r, c);
+  drawBoard();
+  if (win) {
+    winLine = win;
+    drawBoard();
+    gameOver = true;
+    const winner = currentPlayer === 1 ? '黑方' : '白方';
+    if (currentPlayer === 1) scores.black++;
+    else scores.white++;
+    updateScores();
+    setTimeout(() => {
+      document.getElementById('winTitle').textContent = winner + '胜！';
+      document.getElementById('winSub').textContent = '落子有声，胜负已分';
+      document.getElementById('winOverlay').classList.add('show');
+    }, 400);
+    return;
+  }
+  if (history.length === GRID * GRID) {
+    gameOver = true;
+    scores.draw++;
+    updateScores();
+    setTimeout(() => {
+      document.getElementById('winTitle').textContent = '平局';
+      document.getElementById('winSub').textContent = '棋逢对手，势均力敌';
+      document.getElementById('winOverlay').classList.add('show');
+    }, 300);
+    return;
+  }
+  currentPlayer = currentPlayer === 1 ? 2 : 1;
+  updateStatus();
+}
+
+function updateScores() {
+  document.getElementById('scoreBlack').textContent = scores.black;
+  document.getElementById('scoreWhite').textContent = scores.white;
+  document.getElementById('scoreDraw').textContent = scores.draw;
+}
+
+function undoMove() {
+  if (gameOver || history.length === 0) return;
+  if (mode === 'pvc') {
+    // Undo two moves (player + AI)
+    if (history.length >= 2) {
+      const [r1, c1] = history.pop(); board[r1][c1] = 0;
+      const [r2, c2] = history.pop(); board[r2][c2] = 0;
+    } else if (history.length === 1) {
+      const [r, c] = history.pop(); board[r][c] = 0;
+    }
+    currentPlayer = 1;
+  } else {
+    const [r, c] = history.pop();
+    board[r][c] = 0;
+    currentPlayer = currentPlayer === 1 ? 2 : 1;
+  }
+  winLine = null;
+  updateStatus();
+  drawBoard();
+}
+
+function checkWin(r, c) {
+  const player = board[r][c];
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for (const [dr, dc] of dirs) {
+    let cells = [[r, c]];
+    for (let d = 1; d < 5; d++) {
+      const nr = r + dr*d, nc = c + dc*d;
+      if (nr<0||nr>=GRID||nc<0||nc>=GRID||board[nr][nc]!==player) break;
+      cells.push([nr, nc]);
+    }
+    for (let d = 1; d < 5; d++) {
+      const nr = r - dr*d, nc = c - dc*d;
+      if (nr<0||nr>=GRID||nc<0||nc>=GRID||board[nr][nc]!==player) break;
+      cells.push([nr, nc]);
+    }
+    if (cells.length >= 5) return cells.slice(0, 5);
+  }
+  return null;
+}
+
+// ---- AI (Minimax-lite with scoring) ----
+function aiMove() {
+  const move = getBestMove();
+  if (move) placeStone(move[0], move[1]);
+}
+
+function scorePos(r, c, player) {
+  const opp = player === 1 ? 2 : 1;
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  let score = 0;
+  for (const [dr, dc] of dirs) {
+    score += lineScore(r, c, dr, dc, player);
+    score += lineScore(r, c, dr, dc, opp) * 1.1;
+  }
+  // Center bonus
+  const dist = Math.abs(r - 7) + Math.abs(c - 7);
+  score += Math.max(0, 10 - dist);
+  return score;
+}
+
+function lineScore(r, c, dr, dc, player) {
+  let count = 1, open = 0;
+  for (let d = 1; d < 5; d++) {
+    const nr = r+dr*d, nc = c+dc*d;
+    if (nr<0||nr>=GRID||nc<0||nc>=GRID) break;
+    if (board[nr][nc] === player) count++;
+    else { if (board[nr][nc] === 0) open++; break; }
+  }
+  for (let d = 1; d < 5; d++) {
+    const nr = r-dr*d, nc = c-dc*d;
+    if (nr<0||nr>=GRID||nc<0||nc>=GRID) break;
+    if (board[nr][nc] === player) count++;
+    else { if (board[nr][nc] === 0) open++; break; }
+  }
+  if (count >= 5) return 100000;
+  if (count === 4 && open >= 1) return 10000;
+  if (count === 3 && open === 2) return 1000;
+  if (count === 3 && open === 1) return 200;
+  if (count === 2 && open === 2) return 100;
+  if (count === 2 && open === 1) return 20;
+  return count * 2;
+}
+
+function getBestMove() {
+  let best = -Infinity, bestMove = null;
+  const candidates = getCandidates();
+  for (const [r, c] of candidates) {
+    board[r][c] = 2;
+    // Check immediate win
+    if (checkWin(r, c)) { board[r][c] = 0; return [r, c]; }
+    board[r][c] = 0;
+  }
+  // Check block
+  for (const [r, c] of candidates) {
+    board[r][c] = 1;
+    if (checkWin(r, c)) { board[r][c] = 0; return [r, c]; }
+    board[r][c] = 0;
+  }
+  for (const [r, c] of candidates) {
+    const s = scorePos(r, c, 2);
+    if (s > best) { best = s; bestMove = [r, c]; }
+  }
+  return bestMove || candidates[0];
+}
+
+function getCandidates() {
+  if (history.length === 0) return [[7, 7]];
+  const set = new Set();
+  const range = 2;
+  for (const [r, c] of history) {
+    for (let dr = -range; dr <= range; dr++) {
+      for (let dc = -range; dc <= range; dc++) {
+        const nr = r+dr, nc = c+dc;
+        if (nr>=0&&nr<GRID&&nc>=0&&nc<GRID&&board[nr][nc]===0) {
+          set.add(nr*GRID+nc);
+        }
+      }
+    }
+  }
+  return [...set].map(v => [Math.floor(v/GRID), v%GRID]);
+}
+
+resetGame();
+</script>
+</body>
+</html>
