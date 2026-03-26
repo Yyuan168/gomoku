@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五子棋·联网对战</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=ZCOOL+XiaoWei&display=swap');
+
+  :root {
+    --board-color: #d4a96a;
+    --board-dark: #b8864e;
+    --board-shadow: #8b5e2e;
+    --black-stone: #1a1a1a;
+    --white-stone: #f5f0e8;
+    --accent: #c0392b;
+    --bg: #1c1008;
+    --text-light: #f0e6d3;
+    --text-muted: #a08060;
+    --cell: 38px;
+    --stone: 34px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Serif SC', serif;
+    color: var(--text-light);
+    background-image:
+      radial-gradient(ellipse at 20% 20%, #3d1f0a 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, #2a1505 0%, transparent 50%);
+    padding: 20px;
+  }
+
+  h1 {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: 2rem;
+    letter-spacing: 0.3em;
+    color: var(--board-color);
+    text-shadow: 0 0 30px rgba(212,169,106,0.4);
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.2em;
+    margin-bottom: 24px;
+  }
+
+  /* ---- Lobby Screen ---- */
+  .screen { display: none; flex-direction: column; align-items: center; }
+  .screen.active { display: flex; }
+
+  .lobby-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(212,169,106,0.2);
+    border-radius: 8px;
+    padding: 36px 48px;
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+  }
+
+  .lobby-title {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: 1.5rem;
+    color: var(--board-color);
+    margin-bottom: 8px;
+  }
+
+  .lobby-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(212,169,106,0.2);
+  }
+
+  .btn {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .btn-primary {
+    background: var(--board-color);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  .btn-primary:hover { background: #e8c07a; transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-light);
+    border: 1px solid rgba(212,169,106,0.4);
+  }
+
+  .btn-secondary:hover { border-color: var(--board-color); color: var(--board-color); }
+
+  .input-group { margin-bottom: 12px; }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(212,169,106,0.3);
+    border-radius: 4px;
+    color: var(--text-light);
+    font-family: 'Noto Serif SC', serif;
+    font-size: 1rem;
+    text-align: center;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus { border-color: var(--board-color); }
+  input[type="text"]::placeholder { color: var(--text-muted); letter-spacing: 0.1em; }
+
+  .msg {
+    font-size: 0.8rem;
+    margin-top: 8px;
+    min-height: 20px;
+    color: var(--text-muted);
+  }
+
+  .msg.error { color: #e74c3c; }
+  .msg.ok { color: #27ae60; }
+
+  /* ---- Waiting Screen ---- */
+  .room-code-box {
+    background: rgba(0,0,0,0.3);
+    border: 2px dashed rgba(212,169,106,0.5);
+    border-radius: 6px;
+    padding: 20px 32px;
+    margin: 20px 0;
+  }
+
+  .room-code-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+  }
+
+  .room-code {
+    font-family: 'Courier New', monospace;
+    font-size: 2.2rem;
+    color: var(--board-color);
+    letter-spacing: 0.3em;
+    font-weight: 700;
+  }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(212,169,106,0.2);
+    border-top-color: var(--board-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 16px auto;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Game Screen ---- */
+  .game-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .game-header .room-badge {
+    font-family: monospace;
+    background: rgba(212,169,106,0.15);
+    border: 1px solid rgba(212,169,106,0.3);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.7rem;
+    color: var(--board-color);
+    letter-spacing: 0.1em;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(212,169,106,0.2);
+    border-radius: 40px;
+    padding: 8px 24px;
+  }
+
+  .turn-indicator { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+
+  .stone-preview {
+    width: 18px; height: 18px; border-radius: 50%; transition: all 0.3s;
+  }
+
+  .stone-preview.black {
+    background: radial-gradient(circle at 35% 35%, #555, #111);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  }
+
+  .stone-preview.white {
+    background: radial-gradient(circle at 35% 35%, #fff, #ccc);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .my-role {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  .board-wrap {
+    position: relative;
+    padding: 24px;
+    background: var(--board-color);
+    border-radius: 4px;
+    box-shadow:
+      0 0 0 3px var(--board-dark),
+      0 0 0 6px var(--board-shadow),
+      0 20px 60px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent calc(var(--cell) - 1px), rgba(139,94,46,0.3) calc(var(--cell) - 1px), rgba(139,94,46,0.3) var(--cell)),
+      repeating-linear-gradient(90deg, transparent, transparent calc(var(--cell) - 1px), rgba(139,94,46,0.3) calc(var(--cell) - 1px), rgba(139,94,46,0.3) var(--cell));
+  }
+
+  canvas { display: block; cursor: crosshair; }
+
+  .controls { display: flex; gap: 12px; margin-top: 16px; }
+
+  .controls button { flex: 1; }
+
+  /* ---- Win Overlay ---- */
+  .win-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .win-overlay.show { display: flex; }
+
+  .win-card {
+    background: linear-gradient(135deg, #2a1a08, #1c1008);
+    border: 1px solid var(--board-color);
+    border-radius: 8px;
+    padding: 40px 56px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(212,169,106,0.3);
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .win-title {
+    font-family: 'ZCOOL XiaoWei', serif;
+    font-size: 2.6rem;
+    color: var(--board-color);
+    text-shadow: 0 0 30px rgba(212,169,106,0.6);
+    margin-bottom: 8px;
+  }
+
+  .win-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
+
+  .btn-back {
+    background: transparent;
+    border: 1px solid rgba(212,169,106,0.4);
+    color: var(--text-muted);
+    font-family: 'Noto Serif SC', serif;
+    font-size: 0.8rem;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+
+  .btn-back:hover { border-color: var(--board-color); color: var(--text-light); }
+
+  /* Mobile */
+  @media (max-width: 500px) {
+    :root { --cell: calc((100vw - 80px) / 14); --stone: calc(var(--cell) * 0.88); }
+    .lobby-card { padding: 28px 24px; }
+    canvas { width: calc(100vw - 80px) !important; height: calc(100vw - 80px) !important; }
+    .board-wrap { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>五子棋</h1>
+<p class="subtitle">联机对战 · 尽享博弈之乐</p>
+
+<!-- Lobby Screen -->
+<div class="screen active" id="screenLobby">
+  <div class="lobby-card">
+    <div class="lobby-title">🎮 匹配对手</div>
+    <div class="lobby-desc">创建房间后将房间号发给朋友，<br>朋友加入后即可开始对战</div>
+
+    <button class="btn btn-primary" onclick="createRoom()">创建房间</button>
+
+    <div class="divider">或</div>
+
+    <div class="input-group">
+      <input type="text" id="joinCode" placeholder="输入房间号" maxlength="6" />
+    </div>
+    <button class="btn btn-secondary" onclick="joinRoom()">加入房间</button>
+    <div class="msg" id="lobbyMsg"></div>
+  </div>
+</div>
+
+<!-- Waiting Screen -->
+<div class="screen" id="screenWaiting">
+  <div class="lobby-card">
+    <div class="lobby-title">房间已创建</div>
+    <div class="lobby-desc">把房间号发给朋友，<br>朋友加入后自动开始</div>
+    <div class="room-code-box">
+      <div class="room-code-label">ROOM CODE</div>
+      <div class="room-code" id="myRoomCode">------</div>
+    </div>
+    <div class="spinner"></div>
+    <div class="msg" id="waitingMsg">等待对手加入…</div>
+  </div>
+</div>
+
+<!-- Game Screen -->
+<div class="screen" id="screenGame">
+  <div class="game-header">
+    <span class="room-badge" id="headerRoomId">房间号</span>
+    <span id="headerStatus">第 1 手</span>
+  </div>
+
+  <div class="status-bar">
+    <div class="turn-indicator">
+      <div class="stone-preview" id="stonePreview"></div>
+      <span id="turnText">黑方落子</span>
+    </div>
+    <div class="my-role" id="myRole"></div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board" width="570" height="570"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-secondary" onclick="copyRoomId()">复制房间号</button>
+    <button class="btn btn-secondary" onclick="requestReset()">再来一局</button>
+  </div>
+</div>
+
+<!-- Win Overlay -->
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <div class="win-title" id="winTitle">黑方胜！</div>
+    <div class="win-sub" id="winSub">落子有声，胜负已分</div>
+    <button class="btn btn-primary" onclick="acceptReset()">再来一局</button>
+    <button class="btn-back" onclick="goLobby()">返回主页</button>
+  </div>
+</div>
+
+<script>
+const GRID = 15;
+const CELL = 38;
+const PAD = 19;
+const SERVER_URL = 'wss://gomoku-ws.onrender.com';
+// For local dev: const SERVER_URL = 'ws://localhost:3000';
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+let ws = null;
+let myIndex = -1;
+let roomId = '';
+let board = [];
+let myTurn = false;
+let gameOver = false;
+let history = [];
+let winLine = null;
+let resetRequested = false;
+
+function showScreen(id) {
+  ['screenLobby', 'screenWaiting', 'screenGame'].forEach(s => {
+    document.getElementById(s).classList.remove('active');
+  });
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+function connect() {
+  ws = new WebSocket(SERVER_URL);
+
+  ws.onopen = () => console.log('Connected');
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    handleMsg(msg);
+  };
+
+  ws.onerror = e => {
+    showMsg('lobbyMsg', '连接失败，请检查网络后重试', 'error');
+  };
+
+  ws.onclose = () => {
+    if (!gameOver && roomId) {
+      showScreen('screenLobby');
+      showMsg('lobbyMsg', '连接已断开', 'error');
+    }
+  };
+}
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+function createRoom() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) { connect(); setTimeout(createRoom, 500); return; }
+  showMsg('lobbyMsg', '', '');
+  send({ type: 'create' });
+}
+
+function joinRoom() {
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (!code) { showMsg('lobbyMsg', '请输入房间号', 'error'); return; }
+  if (!ws || ws.readyState !== WebSocket.OPEN) { connect(); setTimeout(joinRoom, 500); return; }
+  showMsg('lobbyMsg', '', '');
+  send({ type: 'join', roomId: code });
+}
+
+function showMsg(id, text, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'msg' + (cls ? ' ' + cls : '');
+}
+
+function handleMsg(msg) {
+  if (msg.type === 'created') {
+    roomId = msg.roomId;
+    myIndex = msg.playerIndex;
+    document.getElementById('myRoomCode').textContent = roomId;
+    showScreen('screenWaiting');
+    gameOver = false;
+  }
+
+  else if (msg.type === 'joined') {
+    roomId = msg.roomId;
+  }
+
+  else if (msg.type === 'opponent_joined') {
+    initGame();
+    showScreen('screenGame');
+    document.getElementById('headerRoomId').textContent = '房间 ' + roomId;
+    updateMyRole();
+    updateTurn(false);
+  }
+
+  else if (msg.type === 'opponent_left') {
+    if (!gameOver) {
+      showScreen('screenLobby');
+      showMsg('lobbyMsg', '对手已离开', 'error');
+    }
+  }
+
+  else if (msg.type === 'move') {
+    board[msg.r][msg.c] = msg.player;
+    history.push([msg.r, msg.c]);
+    winLine = msg.win ? msg.winCells : null;
+    myTurn = (msg.nextTurn === myIndex);
+    document.getElementById('headerStatus').textContent = `第 ${msg.totalMoves} 手`;
+    updateTurn(false);
+    drawBoard();
+
+    if (msg.win) {
+      gameOver = true;
+      const winner = msg.winner === 1 ? '⚫ 黑方' : '⚪ 白方';
+      const isMe = msg.winner === myIndex + 1;
+      setTimeout(() => {
+        document.getElementById('winTitle').textContent = isMe ? '你赢了！' : '你输了';
+        document.getElementById('winSub').textContent = winner + '五连珠，胜负已分';
+        document.getElementById('winOverlay').classList.add('show');
+      }, 300);
+    } else if (msg.draw) {
+      gameOver = true;
+      setTimeout(() => {
+        document.getElementById('winTitle').textContent = '平局';
+        document.getElementById('winSub').textContent = '棋逢对手，势均力敌';
+        document.getElementById('winOverlay').classList.add('show');
+      }, 300);
+    }
+  }
+
+  else if (msg.type === 'reset') {
+    resetGame();
+    document.getElementById('winOverlay').classList.remove('show');
+  }
+
+  else if (msg.type === 'error') {
+    if (roomId === '') showMsg('lobbyMsg', msg.message, 'error');
+  }
+
+  else if (msg.type === 'not_your_turn') {
+    showMsg('lobbyMsg', '还没轮到你落子', 'error');
+  }
+
+  else if (msg.type === 'invalid_move') {
+    showMsg('lobbyMsg', '此处已有棋子', 'error');
+  }
+}
+
+function initGame() {
+  board = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+  history = [];
+  gameOver = false;
+  myTurn = (myIndex === 0);
+  winLine = null;
+  resetRequested = false;
+}
+
+function resetGame() {
+  board = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+  history = [];
+  myTurn = (myIndex === 0);
+  gameOver = false;
+  winLine = null;
+  resetRequested = false;
+  drawBoard();
+  updateTurn(false);
+}
+
+function updateMyRole() {
+  const roleEl = document.getElementById('myRole');
+  roleEl.textContent = myIndex === 0 ? '你是黑方 ⚫' : '你是白方 ⚪';
+}
+
+function updateTurn(fromClick) {
+  const preview = document.getElementById('stonePreview');
+  const text = document.getElementById('turnText');
+  if (myTurn) {
+    preview.className = 'stone-preview ' + (myIndex === 0 ? 'black' : 'white');
+    text.textContent = '你的回合';
+  } else {
+    preview.className = 'stone-preview ' + (myIndex === 0 ? 'white' : 'black');
+    text.textContent = '等待对手…';
+  }
+}
+
+function drawBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = 'rgba(139,94,46,0.7)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < GRID; i++) {
+    const x = PAD + i * CELL;
+    const y = PAD + i * CELL;
+    ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, PAD + (GRID - 1) * CELL); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(PAD + (GRID - 1) * CELL, y); ctx.stroke();
+  }
+
+  const stars = [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]];
+  ctx.fillStyle = 'rgba(139,94,46,0.9)';
+  stars.forEach(([r, c]) => {
+    ctx.beginPath();
+    ctx.arc(PAD + c * CELL, PAD + r * CELL, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  if (winLine) {
+    ctx.strokeStyle = 'rgba(192,57,43,0.7)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    const [r0, c0] = winLine[0];
+    const [r4, c4] = winLine[4];
+    ctx.beginPath();
+    ctx.moveTo(PAD + c0 * CELL, PAD + r0 * CELL);
+    ctx.lineTo(PAD + c4 * CELL, PAD + r4 * CELL);
+    ctx.stroke();
+  }
+
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      if (board[r][c]) drawStone(r, c, board[r][c]);
+    }
+  }
+
+  if (history.length > 0) {
+    const [lr, lc] = history[history.length - 1];
+    ctx.strokeStyle = board[lr][lc] === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.5;
+    const cx = PAD + lc * CELL, cy = PAD + lr * CELL;
+    ctx.beginPath(); ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy + 5); ctx.stroke();
+  }
+}
+
+function drawStone(r, c, player) {
+  const x = PAD + c * CELL;
+  const y = PAD + r * CELL;
+  const radius = CELL * 0.44;
+
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 3;
+
+  const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.05, x, y, radius);
+  if (player === 1) {
+    grad.addColorStop(0, '#666'); grad.addColorStop(0.4, '#222'); grad.addColorStop(1, '#000');
+  } else {
+    grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.5, '#e8e0d0'); grad.addColorStop(1, '#b0a898');
+  }
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  const shine = ctx.createRadialGradient(x - radius * 0.35, y - radius * 0.35, 0, x - radius * 0.2, y - radius * 0.2, radius * 0.6);
+  shine.addColorStop(0, player === 1 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.7)');
+  shine.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = shine;
+  ctx.fill();
+}
+
+function getCell(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+  const c = Math.round((mx - PAD) / CELL);
+  const r = Math.round((my - PAD) / CELL);
+  if (r >= 0 && r < GRID && c >= 0 && c < GRID) return [r, c];
+  return null;
+}
+
+canvas.addEventListener('click', e => {
+  if (gameOver || !myTurn) return;
+  const cell = getCell(e);
+  if (!cell) return;
+  const [r, c] = cell;
+  if (board[r][c]) return;
+  send({ type: 'move', r, c });
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (gameOver || !myTurn) return;
+  const cell = getCell(e);
+  drawBoard();
+  if (cell) {
+    const [r, c] = cell;
+    if (!board[r][c]) {
+      ctx.globalAlpha = 0.35;
+      drawStone(r, c, myIndex + 1);
+      ctx.globalAlpha = 1;
+    }
+  }
+});
+
+canvas.addEventListener('mouseleave', () => drawBoard());
+
+function copyRoomId() {
+  navigator.clipboard.writeText(roomId).then(() => {
+    const btn = document.querySelector('.controls button');
+    const orig = btn.textContent;
+    btn.textContent = '已复制!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function requestReset() {
+  if (!resetRequested) {
+    resetRequested = true;
+    send({ type: 'reset' });
+    document.getElementById('winOverlay').classList.add('show');
+    document.getElementById('winTitle').textContent = '等待对手…';
+    document.getElementById('winSub').textContent = '等对方同意重开';
+  }
+}
+
+function acceptReset() {
+  document.getElementById('winOverlay').classList.remove('show');
+  resetRequested = false;
+  send({ type: 'reset' });
+  resetGame();
+}
+
+function goLobby() {
+  document.getElementById('winOverlay').classList.remove('show');
+  roomId = '';
+  myIndex = -1;
+  resetGame();
+  showScreen('screenLobby');
+}
+
+drawBoard();
+connect();
+</script>
+</body>
+</html>
